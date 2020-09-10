@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """ A simple prometheus exporter for koji.
 
 Scrapes koji on an interval and exposes metrics about tasks.
