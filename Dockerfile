@@ -18,4 +18,4 @@ COPY docker/ /docker/
 
 USER 1001
 EXPOSE 8080
-ENTRYPOINT ["/docker/entrypoint.sh"]
+ENTRYPOINT ["/docker/entrypoint.sh", "/usr/local/bin/koji-prometheus-exporter.py"]
