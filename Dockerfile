@@ -7,6 +7,7 @@ LABEL maintainer="Ralph Bean" \
 RUN dnf install -y --setopt=tsflags=nodocs \
                 python3-koji \
                 python3-prometheus_client \
+                dig \
     && dnf clean all
 
 # Allow a non-root user to install a custom root CA at run-time
