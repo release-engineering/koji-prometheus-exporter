@@ -67,5 +67,5 @@ if __name__ == '__main__':
         REGISTRY.unregister(collector)
     REGISTRY.register(Expositor())
     while True:
-        time.sleep(int(os.environ.get('KOJI_POLL_INTERVAL', '3')))
         scrape()
+        time.sleep(int(os.environ.get('KOJI_POLL_INTERVAL', '3')))
