@@ -10,9 +10,7 @@ import time
 
 import koji
 
-from prometheus_client.core import (
-    REGISTRY, CounterMetricFamily
-)
+from prometheus_client.core import REGISTRY, CounterMetricFamily
 from prometheus_client import start_http_server
 
 
@@ -44,8 +42,7 @@ def koji_tasks_total():
 
 
 def scrape():
-    family = CounterMetricFamily(
-        'koji_tasks_total', 'Help text', labels=LABELS)
+    family = CounterMetricFamily('koji_tasks_total', 'Help text', labels=LABELS)
     for value, labels in koji_tasks_total():
         family.add_metric(labels, value)
     # Replace this in one atomic operation to avoid race condition to the collector
@@ -54,6 +51,7 @@ def scrape():
 
 class Expositor(object):
     """ Responsible for exposing metrics to prometheus """
+
     def collect(self):
         logging.info("Serving prometheus data")
         for key in sorted(metrics):
