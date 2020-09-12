@@ -8,27 +8,36 @@ import logging
 import os
 import time
 
+import dogpile.cache
 import koji
 
 from prometheus_client.core import REGISTRY, CounterMetricFamily, GaugeMetricFamily
 from prometheus_client import start_http_server
 
+cache = dogpile.cache.make_region().configure(
+    'dogpile.cache.memory', expiration_time=1000
+)
 
 KOJI_URL = os.environ['KOJI_URL']  # Required
 
 b = koji.ClientSession(KOJI_URL)
 channels = b.listChannels()
 CHANNELS = dict([(channel['id'], channel['name']) for channel in channels])
-LABELS = ['channel', 'method']
+TASK_LABELS = ['channel', 'method']
+HOST_LABELS = ['channel']
 START = time.time()
 metrics = {}
 
 
-error_states = [koji.TASK_STATES['FAILED']]
-in_progress_states = [
+error_states = [
+    koji.TASK_STATES['FAILED'],
+]
+waiting_states = [
     koji.TASK_STATES['FREE'],
-    koji.TASK_STATES['OPEN'],
     koji.TASK_STATES['ASSIGNED'],
+]
+in_progress_states = [
+    koji.TASK_STATES['OPEN'],
 ]
 
 
@@ -42,6 +51,42 @@ def retrieve_open_koji_tasks():
     b = koji.ClientSession(KOJI_URL)
     tasks = b.listTasks(opts=dict(state=in_progress_states))
     return tasks
+
+
+def retrieve_waiting_koji_tasks():
+    b = koji.ClientSession(KOJI_URL)
+    tasks = b.listTasks(opts=dict(state=waiting_states))
+    return tasks
+
+
+# This takes about 3s to generate and it changes very infrequently, so cache it.
+# It is useful for making "saturation" metrics in promql.
+@cache.cache_on_arguments()
+def retrieve_hosts_by_channel():
+    b = koji.ClientSession(KOJI_URL)
+    hosts = {}
+    for idx, channel in CHANNELS.items():
+        hosts[channel] = [h['name'] for h in b.listHosts(channelID=idx, enabled=True)]
+    return hosts
+
+
+def retrieve_task_load_by_channel():
+    # Initialize return structure
+    task_load = {}
+    for idx, channel in CHANNELS.items():
+        task_load[channel] = 0
+
+    # Grab the channel to host mapping from in memory cache
+    by_channel = retrieve_hosts_by_channel()
+
+    b = koji.ClientSession(KOJI_URL)
+    hosts = b.listHosts(enabled=True)
+    for host in hosts:
+        for idx, channel in CHANNELS.items():
+            if host['name'] in by_channel[channel]:
+                task_load[channel] += host['task_load']
+
+    return task_load
 
 
 def koji_tasks_total(tasks):
@@ -58,6 +103,16 @@ def koji_tasks_total(tasks):
             yield counts[channel][method], [channel, method]
 
 
+def koji_enabled_hosts_count(hosts):
+    for channel in hosts:
+        yield len(hosts[channel]), [channel]
+
+
+def koji_task_load(task_load):
+    for channel, value in task_load.items():
+        yield value, [channel]
+
+
 def only(tasks, states):
     for task in tasks:
         state = task['state']
@@ -69,31 +124,65 @@ def scrape():
     tasks = retrieve_recent_koji_tasks()
 
     koji_tasks_total_family = CounterMetricFamily(
-        'koji_tasks_total', 'Count of all koji tasks', labels=LABELS
+        'koji_tasks_total', 'Count of all koji tasks', labels=TASK_LABELS
     )
     for value, labels in koji_tasks_total(tasks):
         koji_tasks_total_family.add_metric(labels, value)
 
     koji_task_errors_total_family = CounterMetricFamily(
-        'koji_task_errors_total', 'Count of all koji task errors', labels=LABELS
+        'koji_task_errors_total', 'Count of all koji task errors', labels=TASK_LABELS
     )
     error_tasks = only(tasks, states=error_states)
     for value, labels in koji_tasks_total(error_tasks):
         koji_task_errors_total_family.add_metric(labels, value)
 
     koji_in_progress_tasks_family = GaugeMetricFamily(
-        'koji_in_progress_tasks', 'Count of all in-progress koji tasks', labels=LABELS
+        'koji_in_progress_tasks',
+        'Count of all in-progress koji tasks',
+        labels=TASK_LABELS,
     )
     in_progress_tasks = retrieve_open_koji_tasks()
     for value, labels in koji_tasks_total(in_progress_tasks):
         koji_in_progress_tasks_family.add_metric(labels, value)
 
+    koji_waiting_tasks_family = GaugeMetricFamily(
+        'koji_waiting_tasks',
+        'Count of all waiting, unscheduled koji tasks',
+        labels=TASK_LABELS,
+    )
+    waiting_tasks = retrieve_waiting_koji_tasks()
+    for value, labels in koji_tasks_total(waiting_tasks):
+        koji_waiting_tasks_family.add_metric(labels, value)
+
+    koji_enabled_hosts_count_family = GaugeMetricFamily(
+        'koji_enabled_hosts_count',
+        'Count of all koji hosts by channel',
+        labels=HOST_LABELS,
+    )
+    hosts_count = retrieve_hosts_by_channel()
+    for value, labels in koji_enabled_hosts_count(hosts_count):
+        koji_enabled_hosts_count_family.add_metric(labels, value)
+
+    koji_task_load_family = GaugeMetricFamily(
+        'koji_task_load',
+        'Task load of all koji builders by channel',
+        labels=HOST_LABELS,
+    )
+    task_load = retrieve_task_load_by_channel()
+    for value, labels in koji_task_load(task_load):
+        koji_task_load_family.add_metric(labels, value)
+
     # Replace this in one atomic operation to avoid race condition to the Expositor
-    metrics.update({
-        'koji_tasks_total': koji_tasks_total_family,
-        'koji_task_errors_total': koji_task_errors_total_family,
-        'koji_in_progress_tasks': koji_in_progress_tasks_family,
-    })
+    metrics.update(
+        {
+            'koji_tasks_total': koji_tasks_total_family,
+            'koji_task_errors_total': koji_task_errors_total_family,
+            'koji_in_progress_tasks': koji_in_progress_tasks_family,
+            'koji_waiting_tasks': koji_waiting_tasks_family,
+            'koji_enabled_hosts_count': koji_enabled_hosts_count_family,
+            'koji_task_load': koji_task_load_family,
+        }
+    )
 
 
 class Expositor(object):
