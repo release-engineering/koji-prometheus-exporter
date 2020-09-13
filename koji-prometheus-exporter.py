@@ -11,7 +11,12 @@ import time
 import dogpile.cache
 import koji
 
-from prometheus_client.core import REGISTRY, CounterMetricFamily, GaugeMetricFamily
+from prometheus_client.core import (
+    REGISTRY,
+    CounterMetricFamily,
+    GaugeMetricFamily,
+    HistogramMetricFamily,
+)
 from prometheus_client import start_http_server
 
 cache = dogpile.cache.make_region().configure(
@@ -25,6 +30,19 @@ channels = b.listChannels()
 CHANNELS = dict([(channel['id'], channel['name']) for channel in channels])
 TASK_LABELS = ['channel', 'method']
 HOST_LABELS = ['channel']
+
+# All in seconds
+DURATION_BUCKETS = [
+    10,
+    30,
+    60,  # 1 minute
+    180,  # 3 minutes
+    480,  # 8 minutes
+    1200,  # 20 minutes
+    3600,  # 1 hour
+    7200,  # 2 hours
+]
+
 START = time.time()
 metrics = {}
 
@@ -39,6 +57,12 @@ waiting_states = [
 in_progress_states = [
     koji.TASK_STATES['OPEN'],
 ]
+
+
+class IncompleteTask(Exception):
+    """ Error raised when a koji task is not complete. """
+
+    pass
 
 
 def retrieve_recent_koji_tasks():
@@ -103,6 +127,58 @@ def koji_tasks_total(tasks):
             yield counts[channel][method], [channel, method]
 
 
+def calculate_duration(task):
+    if not task['completion_ts']:
+        # Duration is undefined.
+        # We could consider using `time.time()` as the duration, but that would produce durations
+        # that change for incomlete tasks -- and changing durations like that is incompatible with
+        # prometheus' histogram and counter model.  So - we just ignore tasks until they are
+        # complete and have a final duration.
+        raise IncompleteTask("Task is not yet complete.  Duration is undefined.")
+    return task['completion_ts'] - task['create_ts']
+
+
+def find_applicable_buckets(duration):
+    buckets = DURATION_BUCKETS + ["+Inf"]
+    for bucket in buckets:
+        if duration < float(bucket):
+            yield bucket
+
+
+def koji_task_duration_seconds(tasks):
+    counts = {}
+    duration_buckets = DURATION_BUCKETS + ["+Inf"]
+
+    for task in tasks:
+        method = task['method']
+        channel = CHANNELS[task['channel_id']]
+
+        try:
+            duration = calculate_duration(task)
+            print(f"{channel}, {method}, {duration}")
+        except IncompleteTask:
+            print(f"{channel}, {method}, SKIPPPPP")
+            continue
+
+        # Initialize structure
+        counts[channel] = counts.get(channel, {})
+        counts[channel][method] = counts[channel].get(method, {})
+        for bucket in duration_buckets:
+            counts[channel][method][bucket] = counts[channel][method].get(bucket, 0)
+
+        # Increment applicable bucket counts
+        for bucket in find_applicable_buckets(duration):
+            counts[channel][method][bucket] += 1
+
+    for channel in counts:
+        for method in counts[channel]:
+            buckets = [
+                (str(bucket), counts[channel][method][bucket])
+                for bucket in duration_buckets
+            ]
+            yield buckets, [channel, method]
+
+
 def koji_enabled_hosts_count(hosts):
     for channel in hosts:
         yield len(hosts[channel]), [channel]
@@ -154,6 +230,14 @@ def scrape():
     for value, labels in koji_tasks_total(waiting_tasks):
         koji_waiting_tasks_family.add_metric(labels, value)
 
+    koji_task_duration_seconds_family = HistogramMetricFamily(
+        'koji_task_duration_seconds',
+        'Histogram of koji task durations',
+        labels=TASK_LABELS,
+    )
+    for buckets, labels in koji_task_duration_seconds(tasks):
+        koji_task_duration_seconds_family.add_metric(labels, buckets, sum_value=None)
+
     koji_enabled_hosts_count_family = GaugeMetricFamily(
         'koji_enabled_hosts_count',
         'Count of all koji hosts by channel',
@@ -179,6 +263,7 @@ def scrape():
             'koji_task_errors_total': koji_task_errors_total_family,
             'koji_in_progress_tasks': koji_in_progress_tasks_family,
             'koji_waiting_tasks': koji_waiting_tasks_family,
+            'koji_task_duration_seconds': koji_task_duration_seconds_family,
             'koji_enabled_hosts_count': koji_enabled_hosts_count_family,
             'koji_task_load': koji_task_load_family,
         }
