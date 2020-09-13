@@ -281,10 +281,14 @@ class Expositor(object):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    start_http_server(8000)
     for collector in list(REGISTRY._collector_to_names):
         REGISTRY.unregister(collector)
     REGISTRY.register(Expositor())
+
+    # Popluate data before exposing over http
+    scrape()
+    start_http_server(8000)
+
     while True:
-        scrape()
         time.sleep(int(os.environ.get('KOJI_POLL_INTERVAL', '3')))
+        scrape()
