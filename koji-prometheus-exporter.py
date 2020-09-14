@@ -155,9 +155,7 @@ def koji_task_duration_seconds(tasks):
 
         try:
             duration = calculate_duration(task)
-            print(f"{channel}, {method}, {duration}")
         except IncompleteTask:
-            print(f"{channel}, {method}, SKIPPPPP")
             continue
 
         # Initialize structure
