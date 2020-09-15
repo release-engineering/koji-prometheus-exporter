@@ -31,7 +31,7 @@ CHANNELS = dict([(channel['id'], channel['name']) for channel in channels])
 TASK_LABELS = ['channel', 'method']
 HOST_LABELS = ['channel']
 
-# All in seconds
+# In seconds
 DURATION_BUCKETS = [
     10,
     30,
