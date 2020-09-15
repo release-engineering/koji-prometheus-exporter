@@ -90,7 +90,7 @@ def retrieve_hosts_by_channel():
     b = koji.ClientSession(KOJI_URL)
     hosts = {}
     for idx, channel in CHANNELS.items():
-        hosts[channel] = [h['name'] for h in b.listHosts(channelID=idx, enabled=True)]
+        hosts[channel] = list(b.listHosts(channelID=idx, enabled=True))
     return hosts
 
 
@@ -107,7 +107,7 @@ def retrieve_task_load_by_channel():
     hosts = b.listHosts(enabled=True)
     for host in hosts:
         for idx, channel in CHANNELS.items():
-            if host['name'] in by_channel[channel]:
+            if host['name'] in [h['name'] for h in by_channel[channel]]:
                 task_load[channel] += host['task_load']
 
     return task_load
@@ -189,6 +189,11 @@ def koji_enabled_hosts_count(hosts):
         yield len(hosts[channel]), [channel]
 
 
+def koji_enabled_hosts_capacity(hosts):
+    for channel in hosts:
+        yield sum([h['capacity'] for h in hosts[channel]]), [channel]
+
+
 def koji_task_load(task_load):
     for channel, value in task_load.items():
         yield value, [channel]
@@ -248,9 +253,16 @@ def scrape():
         'Count of all koji hosts by channel',
         labels=HOST_LABELS,
     )
-    hosts_count = retrieve_hosts_by_channel()
-    for value, labels in koji_enabled_hosts_count(hosts_count):
+    koji_enabled_hosts_capacity_family = GaugeMetricFamily(
+        'koji_enabled_hosts_capacity',
+        'Reported capacity of all koji hosts by channel',
+        labels=HOST_LABELS,
+    )
+    hosts = retrieve_hosts_by_channel()
+    for value, labels in koji_enabled_hosts_count(hosts):
         koji_enabled_hosts_count_family.add_metric(labels, value)
+    for value, labels in koji_enabled_hosts_capacity(hosts):
+        koji_enabled_hosts_capacity_family.add_metric(labels, value)
 
     koji_task_load_family = GaugeMetricFamily(
         'koji_task_load',
@@ -270,6 +282,7 @@ def scrape():
             'koji_waiting_tasks': koji_waiting_tasks_family,
             'koji_task_duration_seconds': koji_task_duration_seconds_family,
             'koji_enabled_hosts_count': koji_enabled_hosts_count_family,
+            'koji_enabled_hosts_capacity': koji_enabled_hosts_capacity_family,
             'koji_task_load': koji_task_load_family,
         }
     )
