@@ -146,8 +146,12 @@ def find_applicable_buckets(duration):
 
 
 def koji_task_duration_seconds(tasks):
-    counts = {}
     duration_buckets = DURATION_BUCKETS + ["+Inf"]
+
+    # Build counts of observations into histogram "buckets"
+    counts = {}
+    # Sum of all observed durations
+    durations = {}
 
     for task in tasks:
         method = task['method']
@@ -158,13 +162,16 @@ def koji_task_duration_seconds(tasks):
         except IncompleteTask:
             continue
 
-        # Initialize structure
+        # Initialize structures
+        durations[channel] = durations.get(channel, {})
+        durations[channel][method] = durations[channel].get(method, 0)
         counts[channel] = counts.get(channel, {})
         counts[channel][method] = counts[channel].get(method, {})
         for bucket in duration_buckets:
             counts[channel][method][bucket] = counts[channel][method].get(bucket, 0)
 
-        # Increment applicable bucket counts
+        # Increment applicable bucket counts and duration sums
+        durations[channel][method] += duration
         for bucket in find_applicable_buckets(duration):
             counts[channel][method][bucket] += 1
 
@@ -174,7 +181,7 @@ def koji_task_duration_seconds(tasks):
                 (str(bucket), counts[channel][method][bucket])
                 for bucket in duration_buckets
             ]
-            yield buckets, [channel, method]
+            yield buckets, durations[channel][method], [channel, method]
 
 
 def koji_enabled_hosts_count(hosts):
@@ -233,8 +240,8 @@ def scrape():
         'Histogram of koji task durations',
         labels=TASK_LABELS,
     )
-    for buckets, labels in koji_task_duration_seconds(tasks):
-        koji_task_duration_seconds_family.add_metric(labels, buckets, sum_value=None)
+    for buckets, duration_sum, labels in koji_task_duration_seconds(tasks):
+        koji_task_duration_seconds_family.add_metric(labels, buckets, sum_value=duration_sum)
 
     koji_enabled_hosts_count_family = GaugeMetricFamily(
         'koji_enabled_hosts_count',
