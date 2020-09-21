@@ -4,6 +4,7 @@
 Scrapes koji on an interval and exposes metrics about tasks.
 """
 
+from datetime import datetime
 import logging
 import os
 import time
@@ -43,7 +44,7 @@ DURATION_BUCKETS = [
     7200,  # 2 hours
 ]
 
-START = time.time()
+START = None
 metrics = {}
 
 
@@ -207,6 +208,10 @@ def only(tasks, states):
 
 
 def scrape():
+    global START
+    today = datetime.utcnow().date()
+    START = datetime.timestamp(datetime.combine(today, datetime.min.time()))
+
     tasks = retrieve_recent_koji_tasks()
 
     koji_tasks_total_family = CounterMetricFamily(
