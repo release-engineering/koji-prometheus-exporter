@@ -15,4 +15,5 @@ main() {
 }
 
 main
+export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt
 exec "$@"
