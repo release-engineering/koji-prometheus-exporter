@@ -4,11 +4,7 @@ LABEL maintainer="Ralph Bean" \
       summary="A prometheus exporter for koji." \
       distribution-scope="public"
 
-RUN dnf install -y --setopt=tsflags=nodocs \
-                python3-dogpile-cache \
-                python3-koji \
-                python3-prometheus_client \
-    && dnf clean all
+RUN pip3 install -r requirements.txt
 
 # Allow a non-root user to install a custom root CA at run-time
 RUN chmod g+w /etc/pki/tls/certs/ca-bundle.crt
