@@ -5,7 +5,7 @@ cryptography==3.2.1
 decorator==4.4.2
 dogpile.cache==1.1.1
 gssapi==1.6.11
-idna==2.10
+idna==3.0
 importlib-metadata==3.1.1
 koji==1.23.0
 pbr==5.5.1
