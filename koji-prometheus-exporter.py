@@ -128,7 +128,7 @@ def koji_tasks_total(tasks):
             yield counts[channel][method], [channel, method]
 
 
-def calculate_duration(task):
+def calculate_overall_duration(task):
     if not task['completion_ts']:
         # Duration is undefined.
         # We could consider using `time.time()` as the duration, but that would produce durations
@@ -139,6 +139,33 @@ def calculate_duration(task):
     return task['completion_ts'] - task['create_ts']
 
 
+def calculate_waiting_duration(task):
+    if not task['start_ts']:
+        # Duration is undefined because the task has not started yet.
+        # We could consider using `time.time()` as the duration, but that would produce durations
+        # that change for incomlete tasks -- and changing durations like that is incompatible with
+        # prometheus' histogram and counter model.  So - we just ignore tasks until they are
+        # started and have a final waiting duration.
+        raise IncompleteTask("Task is not yet started.  Duration is undefined.")
+    return task['start_ts'] - task['create_ts']
+
+
+def calculate_in_progress_duration(task):
+    if not task['completion_ts']:
+        # Duration is undefined because the task has not completed yet.
+        # We could consider using `time.time()` as the duration, but that would produce durations
+        # that change for incomlete tasks -- and changing durations like that is incompatible with
+        # prometheus' histogram and counter model.  So - we just ignore tasks until they are
+        # complete and have a final duration.
+        raise IncompleteTask("Task is not yet complete.  Duration is undefined.")
+    if not task['start_ts']:
+        # This shouldn't happen as a task with a completion_ts should always have a start_ts.
+        # However, if a task is cancelled, or due to an unknown corner case, the start_ts may not
+        # be set.
+        raise IncompleteTask("Task completed but not started.  Duration is undefined.")
+    return task['completion_ts'] - task['start_ts']
+
+
 def find_applicable_buckets(duration):
     buckets = DURATION_BUCKETS + ["+Inf"]
     for bucket in buckets:
@@ -146,7 +173,7 @@ def find_applicable_buckets(duration):
             yield bucket
 
 
-def koji_task_duration_seconds(tasks):
+def koji_task_duration_seconds(tasks, calculate_duration):
     duration_buckets = DURATION_BUCKETS + ["+Inf"]
 
     # Build counts of observations into histogram "buckets"
@@ -250,8 +277,35 @@ def scrape():
         'Histogram of koji task durations',
         labels=TASK_LABELS,
     )
-    for buckets, duration_sum, labels in koji_task_duration_seconds(tasks):
+    for buckets, duration_sum, labels in koji_task_duration_seconds(
+        tasks, calculate_overall_duration
+    ):
         koji_task_duration_seconds_family.add_metric(labels, buckets, sum_value=duration_sum)
+
+    koji_task_waiting_duration_seconds_family = HistogramMetricFamily(
+        'koji_task_waiting_duration_seconds',
+        'Histogram of koji tasks durations while waiting',
+        labels=TASK_LABELS,
+    )
+    for buckets, duration_sum, labels in koji_task_duration_seconds(
+        tasks, calculate_waiting_duration
+    ):
+        koji_task_waiting_duration_seconds_family.add_metric(
+            labels, buckets, sum_value=duration_sum
+        )
+
+    koji_task_in_progress_duration_seconds_family = HistogramMetricFamily(
+        'koji_task_in_progress_duration_seconds',
+        'Histogram of koji task durations while in-progress',
+        labels=TASK_LABELS,
+    )
+    for buckets, duration_sum, labels in koji_task_duration_seconds(
+        tasks, calculate_in_progress_duration
+    ):
+        koji_task_in_progress_duration_seconds_family.add_metric(
+            labels, buckets, sum_value=duration_sum
+        )
+
 
     koji_enabled_hosts_count_family = GaugeMetricFamily(
         'koji_enabled_hosts_count',
@@ -286,6 +340,8 @@ def scrape():
             'koji_in_progress_tasks': koji_in_progress_tasks_family,
             'koji_waiting_tasks': koji_waiting_tasks_family,
             'koji_task_duration_seconds': koji_task_duration_seconds_family,
+            'koji_task_waiting_duration_seconds': koji_task_waiting_duration_seconds_family,
+            'koji_task_in_progress_duration_seconds': koji_task_in_progress_duration_seconds_family,
             'koji_enabled_hosts_count': koji_enabled_hosts_count_family,
             'koji_enabled_hosts_capacity': koji_enabled_hosts_capacity_family,
             'koji_task_load': koji_task_load_family,
