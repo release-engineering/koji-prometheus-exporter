@@ -1,4 +1,4 @@
-FROM fedora:latest
+FROM registry.fedoraproject.org/fedora:latest
 
 LABEL maintainer="Ralph Bean" \
       summary="A prometheus exporter for koji." \
