@@ -3,7 +3,7 @@ cffi==1.14.4
 chardet==4.0.0
 cryptography==3.3.1
 decorator==4.4.2
-dogpile.cache==1.1.1
+dogpile.cache==1.1.2
 gssapi==1.6.12
 idna==3.1
 importlib-metadata==3.4.0
