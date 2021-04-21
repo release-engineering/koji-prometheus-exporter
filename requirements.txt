@@ -6,7 +6,7 @@ decorator==4.4.2
 dogpile.cache==1.1.2
 gssapi==1.6.12
 idna==3.1
-importlib-metadata==3.7.3
+importlib-metadata==4.0.0
 koji==1.24.0
 pbr==5.5.1
 prometheus-client==0.10.1
