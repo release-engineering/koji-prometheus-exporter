@@ -344,9 +344,9 @@ def scrape():
         labels=HOST_LABELS,
     )
 
-    koji_hosts_last_update_family = CounterMetricFamily(
+    koji_hosts_last_update_family = GaugeMetricFamily(
         'koji_hosts_last_update',
-        'Counter of last update from host',
+        'Gauge of last update from host',
         labels=BUILDER_LABELS,
     )
 
