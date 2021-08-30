@@ -51,6 +51,11 @@ metrics = {}
 error_states = [
     koji.TASK_STATES['FAILED'],
 ]
+completed_states = [
+    koji.TASK_STATES['FAILED'],
+    koji.TASK_STATES['CANCELED'],
+    koji.TASK_STATES['CLOSED'],
+]
 waiting_states = [
     koji.TASK_STATES['FREE'],
     koji.TASK_STATES['ASSIGNED'],
@@ -104,7 +109,6 @@ def retrieve_task_load_by_channel():
     # Grab the channel to host mapping from in memory cache
     by_channel = retrieve_hosts_by_channel()
 
-    b = koji.ClientSession(KOJI_URL)
     hosts = b.listHosts(enabled=True)
     for host in hosts:
         for idx, channel in CHANNELS.items():
@@ -269,6 +273,13 @@ def scrape():
     for value, labels in koji_tasks_total(error_tasks):
         koji_task_errors_total_family.add_metric(labels, value)
 
+    koji_task_completions_total_family = CounterMetricFamily(
+        'koji_task_completions_total', 'Count of all koji task completed', labels=TASK_LABELS
+    )
+    completed_tasks = only(tasks, states=completed_states)
+    for value, labels in koji_tasks_total(completed_tasks):
+        koji_task_completions_total_family.add_metric(labels, value)
+
     koji_in_progress_tasks_family = GaugeMetricFamily(
         'koji_in_progress_tasks',
         'Count of all in-progress koji tasks',
@@ -363,6 +374,7 @@ def scrape():
         {
             'koji_tasks_total': koji_tasks_total_family,
             'koji_task_errors_total': koji_task_errors_total_family,
+            'koji_task_completions_total': koji_task_completions_total_family,
             'koji_in_progress_tasks': koji_in_progress_tasks_family,
             'koji_waiting_tasks': koji_waiting_tasks_family,
             'koji_task_duration_seconds': koji_task_duration_seconds_family,
@@ -391,9 +403,14 @@ if __name__ == '__main__':
         REGISTRY.unregister(collector)
     REGISTRY.register(Expositor())
 
+    start_time = time.time()
+
     # Popluate data before exposing over http
     scrape()
     start_http_server(8000)
+
+    ready_time = time.time()
+    print("Ready time: ", ready_time-start_time)
 
     while True:
         time.sleep(int(os.environ.get('KOJI_POLL_INTERVAL', '3')))
