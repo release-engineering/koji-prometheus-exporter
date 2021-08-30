@@ -8,7 +8,6 @@ from datetime import datetime
 import logging
 import os
 import time
-
 import dogpile.cache
 import koji
 
@@ -31,6 +30,7 @@ channels = b.listChannels()
 CHANNELS = dict([(channel['id'], channel['name']) for channel in channels])
 TASK_LABELS = ['channel', 'method']
 HOST_LABELS = ['channel']
+BUILDER_LABELS = ['hostname', 'channel']
 
 # In seconds
 DURATION_BUCKETS = [
@@ -222,6 +222,21 @@ def koji_enabled_hosts_capacity(hosts):
         yield sum([h['capacity'] for h in hosts[channel]]), [channel]
 
 
+def koji_hosts_last_update(hosts):
+    results = []
+    with b.multicall() as m:
+        for channel, host_list in hosts.items():
+            for host in host_list:
+                # m.getLastHostUpdate returns a VirtualCall object.
+                # It is handled later.
+                results.append( [ m.getLastHostUpdate(host['id'], ts=True),
+                                [ host['name'],
+                                channel]])
+    # Now, filter out any that have None for their value.
+    results = [result for result in results if result[0].result is not None]
+    return results
+
+
 def koji_task_load(task_load):
     for channel, value in task_load.items():
         yield value, [channel]
@@ -317,7 +332,18 @@ def scrape():
         'Reported capacity of all koji hosts by channel',
         labels=HOST_LABELS,
     )
+
+    koji_hosts_last_update_family = CounterMetricFamily(
+        'koji_hosts_last_update',
+        'Counter of last update from host',
+        labels=BUILDER_LABELS,
+    )
+
     hosts = retrieve_hosts_by_channel()
+
+    # result_object is a VirtualCall object from the use of the MultiCallSession from the Koji API
+    for result_object, labels in koji_hosts_last_update(hosts):
+        koji_hosts_last_update_family.add_metric(labels, result_object.result)
     for value, labels in koji_enabled_hosts_count(hosts):
         koji_enabled_hosts_count_family.add_metric(labels, value)
     for value, labels in koji_enabled_hosts_capacity(hosts):
@@ -345,6 +371,7 @@ def scrape():
             'koji_enabled_hosts_count': koji_enabled_hosts_count_family,
             'koji_enabled_hosts_capacity': koji_enabled_hosts_capacity_family,
             'koji_task_load': koji_task_load_family,
+            'koji_hosts_last_update': koji_hosts_last_update_family,
         }
     )
 
