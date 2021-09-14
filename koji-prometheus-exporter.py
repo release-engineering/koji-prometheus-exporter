@@ -24,8 +24,9 @@ cache = dogpile.cache.make_region().configure(
 )
 
 KOJI_URL = os.environ['KOJI_URL']  # Required
+KOJI_TIMEOUT = os.environ.get('KOJI_TIMEOUT', 60)  # Optional
 
-b = koji.ClientSession(KOJI_URL)
+b = koji.ClientSession(KOJI_URL, opts=dict(timeout=KOJI_TIMEOUT))
 channels = b.listChannels()
 CHANNELS = dict([(channel['id'], channel['name']) for channel in channels])
 TASK_LABELS = ['channel', 'method']
@@ -72,19 +73,19 @@ class IncompleteTask(Exception):
 
 
 def retrieve_recent_koji_tasks():
-    b = koji.ClientSession(KOJI_URL)
+    b = koji.ClientSession(KOJI_URL, opts=dict(timeout=KOJI_TIMEOUT))
     tasks = b.listTasks(opts=dict(createdAfter=START))
     return tasks
 
 
 def retrieve_open_koji_tasks():
-    b = koji.ClientSession(KOJI_URL)
+    b = koji.ClientSession(KOJI_URL, opts=dict(timeout=KOJI_TIMEOUT))
     tasks = b.listTasks(opts=dict(state=in_progress_states))
     return tasks
 
 
 def retrieve_waiting_koji_tasks():
-    b = koji.ClientSession(KOJI_URL)
+    b = koji.ClientSession(KOJI_URL, opts=dict(timeout=KOJI_TIMEOUT))
     tasks = b.listTasks(opts=dict(state=waiting_states))
     return tasks
 
@@ -93,7 +94,7 @@ def retrieve_waiting_koji_tasks():
 # It is useful for making "saturation" metrics in promql.
 @cache.cache_on_arguments()
 def retrieve_hosts_by_channel():
-    b = koji.ClientSession(KOJI_URL)
+    b = koji.ClientSession(KOJI_URL, opts=dict(timeout=KOJI_TIMEOUT))
     hosts = {}
     for idx, channel in CHANNELS.items():
         hosts[channel] = list(b.listHosts(channelID=idx, enabled=True))
