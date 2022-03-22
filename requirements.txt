@@ -4,7 +4,7 @@ chardet==4.0.0
 cryptography==36.0.1
 decorator==5.1.1
 dogpile.cache==1.1.5
-gssapi==1.7.2
+gssapi==1.7.3
 idna==3.3
 importlib-metadata==4.10.0
 koji==1.28.0
