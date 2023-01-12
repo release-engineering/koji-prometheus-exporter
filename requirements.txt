@@ -8,7 +8,7 @@ gssapi==1.8.1
 idna==3.3
 importlib-metadata==4.12.0
 koji==1.30.1
-pbr==5.10.0
+pbr==5.11.1
 prometheus-client==0.14.1
 pycparser==2.21
 pyOpenSSL==22.1.0
