@@ -17,5 +17,5 @@ requests==2.28.1
 requests-gssapi==1.2.3
 six==1.16.0
 stevedore==5.1.0
-urllib3==1.26.12
+urllib3==1.26.18
 zipp==3.9.0
