@@ -18,4 +18,4 @@ requests-gssapi==1.2.3
 six==1.16.0
 stevedore==5.1.0
 urllib3==2.1.0
-zipp==3.9.0
+zipp==3.17.0
