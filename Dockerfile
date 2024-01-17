@@ -8,6 +8,7 @@ RUN dnf install -y --setopt=tsflags=nodocs \
                 python3-pip \
                 python3-devel \
                 krb5-devel \
+                libffi-devel \
                 gcc \
     && dnf clean all
 
