@@ -13,7 +13,7 @@ prometheus-client==0.20.0
 pycparser==2.22
 pyOpenSSL==24.1.0
 python-dateutil==2.9.0.post0
-requests==2.31.0
+requests==2.32.1
 requests-gssapi==1.3.0
 six==1.16.0
 stevedore==5.2.0
