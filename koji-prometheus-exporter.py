@@ -89,6 +89,22 @@ def retrieve_waiting_koji_tasks():
     tasks = b.listTasks(opts=dict(state=waiting_states))
     return tasks
 
+def retrieve_repo_queue_length():
+    b = koji.ClientSession(KOJI_URL, opts=dict(timeout=KOJI_TIMEOUT))
+    length = b.repo.queryQueue(clauses=[['active', 'IS', True]],
+                               opts={'countOnly': True})
+    return length
+
+def retrieve_repo_max_waiting_time():
+    b = koji.ClientSession(KOJI_URL, opts=dict(timeout=KOJI_TIMEOUT))
+    req = b.repo.queryQueue(clauses=[['active', 'IS', True]],
+                            opts={'order': 'id', 'limit': 1})
+    if not req:
+        return 0
+
+    req = req[0]
+    return datetime.now().timestamp() - req['create_ts']
+
 
 # This takes about 3s to generate and it changes very infrequently, so cache it.
 # It is useful for making "saturation" metrics in promql.
@@ -351,6 +367,18 @@ def scrape():
         labels=BUILDER_LABELS,
     )
 
+    koji_repo_queue_length = GaugeMetricFamily(
+        'koji_repo_queue_length',
+        'Number of active repo requests',
+        retrieve_repo_queue_length(),
+    )
+
+    koji_repo_max_waiting_time = GaugeMetricFamily(
+        'koji_repo_max_waiting_time',
+        'Actual longest waiting tag for repo regeneration',
+        retrieve_repo_max_waiting_time(),
+    )
+
     hosts = retrieve_hosts_by_channel()
 
     # result_object is a VirtualCall object from the use of the MultiCallSession from the Koji API
@@ -385,6 +413,8 @@ def scrape():
             'koji_enabled_hosts_capacity': koji_enabled_hosts_capacity_family,
             'koji_task_load': koji_task_load_family,
             'koji_hosts_last_update': koji_hosts_last_update_family,
+            'koji_repo_queue_length': koji_repo_queue_length,
+            'koji_repo_max_waiting_time': koji_repo_max_waiting_time,
         }
     )
 
@@ -406,7 +436,7 @@ if __name__ == '__main__':
 
     start_time = time.time()
 
-    # Popluate data before exposing over http
+    # Populate data before exposing over http
     scrape()
     start_http_server(8000)
 
