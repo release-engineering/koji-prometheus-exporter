@@ -1,8 +1,13 @@
 name: Automerge
 
 on:
+  # Handles events in the PR's lifecycle (opened, updated, reopened, etc.)
   pull_request:
     types: [opened, synchronize, reopened]
+
+  # Handles the signal that the CI tests have finished
+  check_suite:
+    types: [completed]
 
 jobs:
   automerge:
