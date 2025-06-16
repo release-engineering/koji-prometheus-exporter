@@ -1,0 +1,22 @@
+name: Automerge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Automerge
+        uses: "pascalgn/automerge-action@v0.15.5"
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          MERGE_LABELS: ""
+          MERGE_METHOD: "squash"
+          MERGE_FILTER_AUTHOR: "red-hat-konflux"
+          MERGE_REQUIRED_APPROVALS: "0"
+          MERGE_DELETE_BRANCH: "true"
