@@ -1,22 +1,20 @@
-name: Automerge
-
-on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-
 jobs:
   automerge:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Get PR associated with the commit
+        id: get_pr
+        uses: stefanbuck/github-event-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Automerge
+        if: ${{ steps.get_pr.outputs.pull_request_author == 'red-hat-konflux[bot]' && steps.get_pr.outputs.pull_request_number != '' }}
         uses: "pascalgn/automerge-action@v0.15.5"
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-          MERGE_LABELS: ""
+          MERGE_PULL_REQUEST: ${{ steps.get_pr.outputs.pull_request_number }}
           MERGE_METHOD: "squash"
-          MERGE_FILTER_AUTHOR: "red-hat-konflux"
-          MERGE_REQUIRED_APPROVALS: "0"
+          MERGE_FILTER_AUTHOR: "red-hat-konflux[bot]"
           MERGE_DELETE_BRANCH: "true"
