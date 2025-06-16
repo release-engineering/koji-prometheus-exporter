@@ -1,8 +1,13 @@
 name: Automerge
 
 on:
+  # Handles events in the PR's lifecycle (opened, updated, reopened, etc.)
   pull_request:
     types: [opened, synchronize, reopened]
+
+  # Handles the signal that the CI tests have finished
+  check_suite:
+    types: [completed]
 
 jobs:
   automerge:
@@ -13,5 +18,5 @@ jobs:
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           MERGE_METHOD: "squash"
-          MERGE_FILTER_AUTHOR: "red-hat-konflux[bot]"
+          MERGE_FILTER_AUTHOR: "red-hat-konflux"
           MERGE_DELETE_BRANCH: "true"
