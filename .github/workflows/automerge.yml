@@ -18,6 +18,6 @@ jobs:
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           MERGE_METHOD: "squash"
-          MERGE_FILTER_AUTHOR: "red-hat-konflux"
+          MERGE_FILTER_AUTHOR: "red-hat-konflux[bot]"
           MERGE_DELETE_BRANCH: "true"
           MERGE_LABELS: ""
