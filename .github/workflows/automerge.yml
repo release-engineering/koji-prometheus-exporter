@@ -20,3 +20,4 @@ jobs:
           MERGE_METHOD: "squash"
           MERGE_FILTER_AUTHOR: "red-hat-konflux"
           MERGE_DELETE_BRANCH: "true"
+          MERGE_LABELS: ""
