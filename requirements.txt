@@ -1,11 +1,11 @@
 certifi==2025.8.3
 cffi==1.17.1
 chardet==5.2.0
-cryptography==45.0.6
+cryptography==45.0.7
 decorator==5.2.1
 defusedxml==0.7.1
 dogpile.cache==1.4.0
-gssapi==1.9.0
+gssapi==1.10.0
 idna==3.10
 importlib-metadata==8.7.0
 koji==1.35.3
