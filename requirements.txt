@@ -4,7 +4,7 @@ chardet==5.2.0
 cryptography==45.0.7
 decorator==5.2.1
 defusedxml==0.7.1
-dogpile.cache==1.4.0
+dogpile.cache==1.4.1
 gssapi==1.10.0
 idna==3.10
 importlib-metadata==8.7.0
