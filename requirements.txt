@@ -11,7 +11,7 @@ importlib-metadata==8.7.0
 koji==1.35.3
 pbr==7.0.1
 prometheus-client==0.22.1
-pycparser==2.22
+pycparser==2.23
 pyOpenSSL==25.1.0
 python-dateutil==2.9.0.post0
 requests==2.32.5
