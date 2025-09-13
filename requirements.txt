@@ -1,5 +1,5 @@
 certifi==2025.8.3
-cffi==1.17.1
+cffi==2.0.0
 chardet==5.2.0
 cryptography==45.0.7
 decorator==5.2.1
