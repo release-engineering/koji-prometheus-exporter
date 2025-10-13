@@ -6,7 +6,7 @@ decorator==5.2.1
 defusedxml==0.7.1
 dogpile.cache==1.4.1
 gssapi==1.10.1
-idna==3.10
+idna==3.11
 importlib-metadata==8.7.0
 koji==1.35.3
 pbr==7.0.1
