@@ -10,7 +10,7 @@ idna==3.11
 importlib-metadata==8.7.1
 koji==1.35.3
 pbr==7.0.3
-prometheus-client==0.24.0
+prometheus-client==0.24.1
 pycparser==2.23
 pyOpenSSL==25.3.0
 python-dateutil==2.9.0.post0
