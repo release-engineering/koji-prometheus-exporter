@@ -1,6 +1,6 @@
 certifi==2026.1.4
 cffi==2.0.0
-chardet==5.2.0
+chardet==6.0.0
 cryptography==46.0.5
 decorator==5.2.1
 defusedxml==0.7.1
