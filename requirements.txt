@@ -12,7 +12,7 @@ koji==1.35.3
 pbr==7.0.3
 prometheus-client==0.24.1
 pycparser==3.0
-pyOpenSSL==25.3.0
+pyOpenSSL==26.0.0
 python-dateutil==2.9.0.post0
 requests==2.32.5
 requests-gssapi==1.4.0
