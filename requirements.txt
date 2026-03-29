@@ -1,6 +1,6 @@
 certifi==2026.2.25
 cffi==2.0.0
-chardet==7.4.0.post1
+chardet==7.4.0.post2
 cryptography==46.0.6
 decorator==5.2.1
 defusedxml==0.7.1
