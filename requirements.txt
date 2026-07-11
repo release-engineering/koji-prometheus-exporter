@@ -8,7 +8,7 @@ dogpile.cache==1.5.0
 gssapi==1.11.1
 idna==3.18
 importlib-metadata==9.0.0
-koji==1.36.0
+koji==1.36.1
 pbr==7.0.3
 prometheus-client==0.25.0
 pycparser==3.0
