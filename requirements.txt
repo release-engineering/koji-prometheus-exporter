@@ -13,7 +13,7 @@ pbr==7.1.3
 prometheus-client==0.26.0
 pycparser==3.11
 pyOpenSSL==26.4.0
-python-dateutil==2.9.0.post0
+python-dateutil==3.0.0
 requests==2.34.2
 requests-gssapi==1.4.0
 six==1.17.0
