@@ -17,6 +17,6 @@ python-dateutil==4.0.0
 requests==2.34.2
 requests-gssapi==1.4.0
 six==1.17.0
-stevedore==5.9.1
+stevedore==5.10.0
 urllib3==2.8.0
 zipp==4.1.2
